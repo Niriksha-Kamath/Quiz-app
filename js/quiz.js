@@ -35,37 +35,84 @@ let quizContainer = document.getElementById("quiz");
 let submitBtn = document.getElementById("submit");
 let resultContainer = document.getElementById("result");
 let highscoreContainer = document.getElementById("highscore");
+let timerContainer = document.getElementById("timer");
 
-// Display high score
+let currentQuestion = 0;
+let score = 0;
+let timer;
+let timeLeft = 10;
+
+// Display stored high score
 const highscore = localStorage.getItem("highscore") || 0;
 highscoreContainer.innerText = `🏆 High Score: ${highscore}`;
 
-// Load quiz
-function loadQuiz() {
-  quizContainer.innerHTML = quizData.map((q, i) => `
+// Load a single question at a time
+function loadQuestion() {
+  const q = quizData[currentQuestion];
+  quizContainer.innerHTML = `
     <div class="question">
-      <h3>${i + 1}. ${q.question}</h3>
-      ${q.options.map((opt, idx) =>
-        `<label><input type="radio" name="q${i}" value="${idx}"> ${opt}</label>`
-      ).join("")}
+      <h3>${currentQuestion + 1}. ${q.question}</h3>
+      ${q.options
+        .map(
+          (opt, idx) =>
+            `<label><input type="radio" name="answer" value="${idx}"> ${opt}</label>`
+        )
+        .join("")}
     </div>
-  `).join("");
+    <p id="timer">⏱️ Time left: <span id="time">${timeLeft}</span> seconds</p>
+  `;
+  startTimer();
 }
 
-submitBtn.addEventListener("click", () => {
-  let score = 0;
+function startTimer() {
+  clearInterval(timer);
+  timeLeft = 10;
+  document.getElementById("time").innerText = timeLeft;
 
-  quizData.forEach((q, i) => {
-    const selected = document.querySelector(`input[name=q${i}]:checked`);
-    if (selected && Number(selected.value) === q.answer) score++;
-  });
+  timer = setInterval(() => {
+    timeLeft--;
+    document.getElementById("time").innerText = timeLeft;
 
-  resultContainer.innerHTML = `You scored ${score} / ${quizData.length}`;
-  
+    if (timeLeft <= 0) {
+      clearInterval(timer);
+      nextQuestion(); // move automatically when time runs out
+    }
+  }, 1000);
+}
+
+function nextQuestion() {
+  clearInterval(timer);
+
+  const selected = document.querySelector("input[name=answer]:checked");
+  if (selected && Number(selected.value) === quizData[currentQuestion].answer) {
+    score++;
+  }
+
+  currentQuestion++;
+
+  if (currentQuestion < quizData.length) {
+    loadQuestion();
+  } else {
+    endQuiz();
+  }
+}
+
+function endQuiz() {
+  clearInterval(timer);
+  quizContainer.innerHTML = `<h2>Quiz Over!</h2>
+  <p>You scored ${score} / ${quizData.length}</p>`;
+
   if (score > highscore) {
     localStorage.setItem("highscore", score);
     highscoreContainer.innerText = `🏆 New High Score: ${score}`;
   }
-});
 
-loadQuiz();
+  submitBtn.style.display = "none";
+  resultContainer.innerText = "";
+}
+
+// Button click moves to next question manually (optional)
+submitBtn.addEventListener("click", nextQuestion);
+
+// Start quiz
+loadQuestion();
